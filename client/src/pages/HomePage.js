@@ -119,91 +119,58 @@ const HomePage = () => {
           <Divider sx={{ width: '80px', mx: 'auto', borderColor: theme.palette.primary.main, borderWidth: 2 }} />
         </Box>
 
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ height: '100%' }} elevation={2}>
-              <CardContent sx={{ textAlign: 'center', p: 4 }}>
-                <FormIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="medium">
-                  Drag & Drop Form Builder
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Create multi-page forms with conditional logic, field validation and custom designs.
-                </Typography>
-              </CardContent>
-            </Card>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Grid container spacing={3} sx={{ mt: 2, maxWidth: '100%', justifyContent: 'center' }}>
+            {[
+              {
+                icon: <FormIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />,
+                title: "Drag & Drop Form Builder",
+                description: "Create multi-page forms with conditional logic, field validation and custom designs."
+              },
+              {
+                icon: <AnalyticsIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />,
+                title: "Advanced Analytics",
+                description: "Visualize responses with charts, word clouds, and export data in CSV or XLSX format."
+              },
+              {
+                icon: <ShareIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />,
+                title: "Simple Sharing",
+                description: "Share via unique URLs, embed forms, or integrate with other systems using webhooks."
+              },
+              {
+                icon: <SecurityIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />,
+                title: "Privacy & Security",
+                description: "Password protection, email verification and duplicate submission prevention built-in."
+              },
+              {
+                icon: <SpeedIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />,
+                title: "Blazing Fast",
+                description: "Optimized performance ensures your forms load quickly and provide a smooth experience."
+              },
+              {
+                icon: <DevicesIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />,
+                title: "Mobile Responsive",
+                description: "Forms look great and function perfectly on all devices, from desktops to smartphones."
+              }
+            ].map((feature, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }} elevation={2}>
+                  <CardContent sx={{ textAlign: 'center', p: 4, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                      {feature.icon}
+                    </Box>
+                    <Typography variant="h5" gutterBottom fontWeight="medium">
+                      {feature.title}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ flexGrow: 1 }}>
+                      {feature.description}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
-          
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ height: '100%' }} elevation={2}>
-              <CardContent sx={{ textAlign: 'center', p: 4 }}>
-                <AnalyticsIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="medium">
-                  Advanced Analytics
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Visualize responses with charts, word clouds, and export data in CSV or XLSX format.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ height: '100%' }} elevation={2}>
-              <CardContent sx={{ textAlign: 'center', p: 4 }}>
-                <ShareIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="medium">
-                  Simple Sharing
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Share via unique URLs, embed forms, or integrate with other systems using webhooks.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ height: '100%' }} elevation={2}>
-              <CardContent sx={{ textAlign: 'center', p: 4 }}>
-                <SecurityIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="medium">
-                  Privacy & Security
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Password protection, email verification and duplicate submission prevention built-in.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ height: '100%' }} elevation={2}>
-              <CardContent sx={{ textAlign: 'center', p: 4 }}>
-                <SpeedIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="medium">
-                  Blazing Fast
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Optimized performance ensures your forms load quickly and provide a smooth experience.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ height: '100%' }} elevation={2}>
-              <CardContent sx={{ textAlign: 'center', p: 4 }}>
-                <DevicesIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="medium">
-                  Mobile Responsive
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Forms look great and function perfectly on all devices, from desktops to smartphones.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        </Box>
       </Container>
 
       {/* CTA Section */}

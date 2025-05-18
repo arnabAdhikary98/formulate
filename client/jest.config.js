@@ -1,37 +1,38 @@
 module.exports = {
   testEnvironment: 'jsdom',
-  testMatch: ['**/__tests__/**/*.test.[jt]s?(x)'],
+  testMatch: [
+    '<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}',
+    '<rootDir>/src/**/*.{spec,test}.{js,jsx,ts,tsx}',
+  ],
   testPathIgnorePatterns: [
     '/node_modules/',
-    '/__mocks__/',
-    '__mocks__'
+    '/__mocks__/styleMock.js',
+    '/__mocks__/fileMock.js',
+    '/__mocks__/axios.js',
+    '/__mocks__/axiosMock.js',
+    '/__mocks__/api-axios.js',
+    '/__mocks__/react-router-dom.js',
   ],
   moduleNameMapper: {
+    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$':
+      '<rootDir>/src/__tests__/__mocks__/fileMock.js',
     '\\.(css|less|scss|sass)$': '<rootDir>/src/__tests__/__mocks__/styleMock.js',
-    '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/src/__tests__/__mocks__/fileMock.js',
-    '^axios$': '<rootDir>/src/__tests__/__mocks__/axios.js',
-    '^react-router-dom$': '<rootDir>/src/__tests__/__mocks__/react-router-dom.js',
-    '^../api/axios$': '<rootDir>/src/__tests__/__mocks__/api-axios.js'
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.js'],
   transform: {
-    '^.+\\.(js|jsx)$': 'babel-jest'
+    '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest'
   },
   transformIgnorePatterns: [
     '/node_modules/(?!(axios|date-fns|@mui)).+\\.js$'
   ],
-  collectCoverageFrom: [
-    'src/**/*.{js,jsx}',
-    '!src/index.js',
-    '!src/reportWebVitals.js',
-    '!src/__tests__/__mocks__/**'
-  ],
+  collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}', '!src/**/*.d.ts'],
   coverageThreshold: {
     global: {
-      branches: 5,
-      functions: 5,
-      lines: 5,
-      statements: 5
-    }
+      statements: 10,
+      branches: 10,
+      functions: 10,
+      lines: 10,
+    },
   },
+  clearMocks: true,
 }; 

@@ -3,17 +3,22 @@ import {
   Box,
   TextField,
   Typography,
-  IconButton
+  IconButton,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import { DeleteOutline as DeleteIcon } from '@mui/icons-material';
 
 const TextField_Component = ({ field, isSelected, isDragging, onClick, onDelete }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <Box 
       onClick={onClick}
       sx={{ 
         position: 'relative',
-        p: 1,
+        p: isMobile ? 0.5 : 1,
         cursor: 'pointer',
         backgroundColor: isDragging ? '#f5f5f5' : 'transparent',
         '&:hover': {
@@ -21,13 +26,23 @@ const TextField_Component = ({ field, isSelected, isDragging, onClick, onDelete 
         }
       }}
     >
-      <Box mb={1}>
-        <Typography variant="subtitle1" component="label" fontWeight={field.required ? 'bold' : 'normal'}>
+      <Box mb={isMobile ? 0.5 : 1}>
+        <Typography 
+          variant={isMobile ? "body2" : "subtitle1"} 
+          component="label" 
+          fontWeight={field.required ? 'bold' : 'normal'}
+          sx={{ fontSize: isMobile ? '0.85rem' : 'inherit' }}
+        >
           {field.label}
           {field.required && <span style={{ color: 'red' }}> *</span>}
         </Typography>
         {field.helpText && (
-          <Typography variant="caption" display="block" color="textSecondary">
+          <Typography 
+            variant="caption" 
+            display="block" 
+            color="textSecondary"
+            sx={{ fontSize: isMobile ? '0.7rem' : '0.75rem' }}
+          >
             {field.helpText}
           </Typography>
         )}
@@ -41,7 +56,11 @@ const TextField_Component = ({ field, isSelected, isDragging, onClick, onDelete 
         size="small"
         InputProps={{
           readOnly: true,
+          style: { fontSize: isMobile ? '0.85rem' : 'inherit' }
         }}
+        sx={{ '& .MuiOutlinedInput-root': { 
+          padding: isMobile ? '8px 10px' : 'inherit' 
+        }}}
       />
 
       {isSelected && (
@@ -50,7 +69,7 @@ const TextField_Component = ({ field, isSelected, isDragging, onClick, onDelete 
             position: 'absolute',
             top: 0,
             right: 0,
-            m: 0.5
+            m: isMobile ? 0.25 : 0.5
           }}
         >
           <IconButton
@@ -60,8 +79,9 @@ const TextField_Component = ({ field, isSelected, isDragging, onClick, onDelete 
               e.stopPropagation();
               onDelete();
             }}
+            sx={{ padding: isMobile ? '4px' : '8px' }}
           >
-            <DeleteIcon fontSize="small" />
+            <DeleteIcon fontSize={isMobile ? "small" : "small"} />
           </IconButton>
         </Box>
       )}

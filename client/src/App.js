@@ -16,6 +16,7 @@ import FormResponses from './pages/FormResponses';
 import FormPreview from './pages/FormPreview';
 import PublicForm from './pages/PublicForm';
 import ThankYou from './pages/ThankYou';
+import Profile from './pages/Profile';
 
 // Components
 import Navigation from './components/Navigation';
@@ -154,6 +155,7 @@ function App() {
             {/* Protected routes */}
             <Route element={<PrivateRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/forms/create" element={<FormBuilder />} />
               <Route path="/forms/:formId/edit" element={<FormEdit />} />
               <Route path="/forms/:formId/responses" element={<FormResponses />} />

@@ -3,6 +3,17 @@ import { render, screen, act, waitForElementToBeRemoved } from '@testing-library
 import '@testing-library/jest-dom';
 import FormEdit from '../pages/FormEdit';
 
+// Mock the API modules
+jest.mock('../api/forms', () => ({
+  getFormById: jest.fn(),
+  updateForm: jest.fn(() => Promise.resolve({ success: true })),
+  publishForm: jest.fn(() => Promise.resolve({ success: true })),
+  closeForm: jest.fn(() => Promise.resolve({ success: true }))
+}));
+
+// Import the mocked modules
+import { getFormById } from '../api/forms';
+
 // Mock the dependencies
 jest.mock('react-router-dom', () => ({
   useParams: () => ({ formId: 'test-form-id' }),
@@ -34,15 +45,6 @@ const mockFormData = {
   }
 };
 
-// Mock the API call
-const getFormByIdMock = jest.fn();
-jest.mock('../api/forms', () => ({
-  getFormById: (...args) => getFormByIdMock(...args),
-  updateForm: jest.fn(() => Promise.resolve({ success: true })),
-  publishForm: jest.fn(() => Promise.resolve({ success: true })),
-  closeForm: jest.fn(() => Promise.resolve({ success: true }))
-}));
-
 // Mock the context
 jest.mock('../context/AuthContext', () => ({
   AuthContext: {
@@ -65,15 +67,29 @@ jest.mock('@mui/x-date-pickers', () => ({
   DateTimePicker: () => <div data-testid="date-time-picker">Date Picker</div>
 }));
 
+// Mock axios
+jest.mock('axios', () => ({
+  create: jest.fn(() => ({
+    interceptors: {
+      request: { use: jest.fn() },
+      response: { use: jest.fn() }
+    },
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn()
+  }))
+}));
+
 describe('FormEdit component', () => {
   beforeEach(() => {
     // Reset the mock before each test
-    getFormByIdMock.mockReset();
+    getFormById.mockReset();
   });
 
   test('renders error state when form loading fails', async () => {
     // Mock API call to reject with an error
-    getFormByIdMock.mockRejectedValue(new Error('API error'));
+    getFormById.mockRejectedValue(new Error('API error'));
 
     await act(async () => {
       render(<FormEdit />);
@@ -86,7 +102,7 @@ describe('FormEdit component', () => {
 
   test('renders form data when loading succeeds', async () => {
     // Mock API call to return form data
-    getFormByIdMock.mockResolvedValue(mockFormData);
+    getFormById.mockResolvedValue(mockFormData);
 
     await act(async () => {
       render(<FormEdit />);

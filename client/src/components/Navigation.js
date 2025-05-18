@@ -10,48 +10,157 @@ import {
   Avatar, 
   Button, 
   Tooltip, 
-  MenuItem 
+  MenuItem,
+  useMediaQuery,
+  useTheme,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider
 } from '@mui/material';
-import { Menu as MenuIcon, BarChart as BarChartIcon } from '@mui/icons-material';
+import { 
+  Menu as MenuIcon, 
+  BarChart as BarChartIcon,
+  Dashboard as DashboardIcon,
+  Add as AddIcon,
+  Home as HomeIcon,
+  Person as PersonIcon,
+  ExitToApp as LogoutIcon
+} from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const Navigation = () => {
-  const [anchorElNav, setAnchorElNav] = useState(null);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [anchorElUser, setAnchorElUser] = useState(null);
   const { user, logout, isAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleOpenNavMenu = (event) => {
-    setAnchorElNav(event.currentTarget);
-  };
-  
   const handleOpenUserMenu = (event) => {
     setAnchorElUser(event.currentTarget);
-  };
-
-  const handleCloseNavMenu = () => {
-    setAnchorElNav(null);
   };
 
   const handleCloseUserMenu = () => {
     setAnchorElUser(null);
   };
 
+  const handleToggleMobileDrawer = () => {
+    setMobileDrawerOpen(!mobileDrawerOpen);
+  };
+
+  const handleCloseMobileDrawer = () => {
+    setMobileDrawerOpen(false);
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
     handleCloseUserMenu();
+    handleCloseMobileDrawer();
   };
   
   const navigateToHome = () => {
     navigate('/');
+    handleCloseMobileDrawer();
   };
+
+  const mobileDrawer = (
+    <Drawer
+      anchor="left"
+      open={mobileDrawerOpen}
+      onClose={handleCloseMobileDrawer}
+      sx={{
+        '& .MuiDrawer-paper': { 
+          width: 250,
+          boxSizing: 'border-box',
+          backgroundColor: theme.palette.background.default
+        },
+      }}
+    >
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+        <BarChartIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+        <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+          FORMULATE
+        </Typography>
+      </Box>
+      <Divider />
+      
+      {isAuthenticated && (
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+          <Avatar sx={{ mr: 2, backgroundColor: theme.palette.primary.main }}>
+            {user?.name?.charAt(0).toUpperCase()}
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle1">{user?.name}</Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.75rem' }}>
+              {user?.email}
+            </Typography>
+          </Box>
+        </Box>
+      )}
+      
+      <List>
+        <ListItem button onClick={navigateToHome}>
+          <ListItemIcon><HomeIcon /></ListItemIcon>
+          <ListItemText primary="Home" />
+        </ListItem>
+        
+        {isAuthenticated ? (
+          <>
+            <ListItem button component={Link} to="/dashboard" onClick={handleCloseMobileDrawer}>
+              <ListItemIcon><DashboardIcon /></ListItemIcon>
+              <ListItemText primary="Dashboard" />
+            </ListItem>
+            <ListItem button component={Link} to="/forms/create" onClick={handleCloseMobileDrawer}>
+              <ListItemIcon><AddIcon /></ListItemIcon>
+              <ListItemText primary="Create Form" />
+            </ListItem>
+            <ListItem button component={Link} to="/profile" onClick={handleCloseMobileDrawer}>
+              <ListItemIcon><PersonIcon /></ListItemIcon>
+              <ListItemText primary="Profile" />
+            </ListItem>
+            <ListItem button onClick={handleLogout}>
+              <ListItemIcon><LogoutIcon /></ListItemIcon>
+              <ListItemText primary="Logout" />
+            </ListItem>
+          </>
+        ) : (
+          <>
+            <ListItem button component={Link} to="/login" onClick={handleCloseMobileDrawer}>
+              <ListItemIcon><PersonIcon /></ListItemIcon>
+              <ListItemText primary="Login" />
+            </ListItem>
+            <ListItem button component={Link} to="/register" onClick={handleCloseMobileDrawer}>
+              <ListItemIcon><AddIcon /></ListItemIcon>
+              <ListItemText primary="Register" />
+            </ListItem>
+          </>
+        )}
+      </List>
+    </Drawer>
+  );
 
   return (
     <AppBar position="static">
       <Container maxWidth="xl">
-        <Toolbar disableGutters>
+        <Toolbar disableGutters sx={{ display: 'flex', flexWrap: 'nowrap' }}>
+          {/* Menu button for mobile */}
+          <IconButton
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleToggleMobileDrawer}
+            color="inherit"
+            sx={{ mr: 1, display: { md: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
+          
+          {/* Logo and brand */}
           <IconButton
             onClick={navigateToHome}
             sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }}
@@ -66,91 +175,22 @@ const Navigation = () => {
             onClick={navigateToHome}
             sx={{
               mr: 2,
-              display: { xs: 'none', md: 'flex' },
+              display: { xs: 'flex', md: 'flex' },
               fontWeight: 700,
               color: 'inherit',
               textDecoration: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            FORMULATE
-          </Typography>
-
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-            <IconButton
-              size="large"
-              aria-label="account of current user"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
-              onClick={handleOpenNavMenu}
-              color="inherit"
-            >
-              <MenuIcon />
-            </IconButton>
-            <Menu
-              id="menu-appbar"
-              anchorEl={anchorElNav}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
-              open={Boolean(anchorElNav)}
-              onClose={handleCloseNavMenu}
-              sx={{
-                display: { xs: 'block', md: 'none' },
-              }}
-            >
-              <MenuItem onClick={() => { handleCloseNavMenu(); navigateToHome(); }}>
-                <Typography textAlign="center">Home</Typography>
-              </MenuItem>
-              
-              {isAuthenticated && (
-                [
-                  <MenuItem key="dashboard" onClick={handleCloseNavMenu} component={Link} to="/dashboard">
-                    <Typography textAlign="center">Dashboard</Typography>
-                  </MenuItem>,
-                  <MenuItem key="create" onClick={handleCloseNavMenu} component={Link} to="/forms/create">
-                    <Typography textAlign="center">Create Form</Typography>
-                  </MenuItem>
-                ]
-              )}
-            </Menu>
-          </Box>
-          
-          <IconButton
-            onClick={navigateToHome}
-            sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }}
-            color="inherit"
-          >
-            <BarChartIcon />
-          </IconButton>
-          <Typography
-            variant="h5"
-            noWrap
-            component="a"
-            onClick={navigateToHome}
-            sx={{
-              mr: 2,
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              fontWeight: 700,
-              color: 'inherit',
-              textDecoration: 'none',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              flexGrow: { xs: 1, md: 0 }
             }}
           >
             FORMULATE
           </Typography>
           
+          {/* Desktop navigation links */}
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
             <Button
               onClick={navigateToHome}
-              sx={{ my: 2, color: 'white', display: 'block' }}
+              sx={{ color: 'white', display: 'block' }}
             >
               Home
             </Button>
@@ -160,14 +200,14 @@ const Navigation = () => {
                 <Button
                   component={Link}
                   to="/dashboard"
-                  sx={{ my: 2, color: 'white', display: 'block' }}
+                  sx={{ color: 'white', display: 'block' }}
                 >
                   Dashboard
                 </Button>
                 <Button
                   component={Link}
                   to="/forms/create"
-                  sx={{ my: 2, color: 'white', display: 'block' }}
+                  sx={{ color: 'white', display: 'block' }}
                 >
                   Create Form
                 </Button>
@@ -175,11 +215,12 @@ const Navigation = () => {
             )}
           </Box>
 
+          {/* User menu or auth buttons - show on all screen sizes */}
           {isAuthenticated ? (
             <Box sx={{ flexGrow: 0 }}>
-              <Tooltip title="Open settings">
+              <Tooltip title="Account settings">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                  <Avatar alt={user?.name}>
+                  <Avatar alt={user?.name} sx={{ bgcolor: 'secondary.main' }}>
                     {user?.name?.charAt(0).toUpperCase()}
                   </Avatar>
                 </IconButton>
@@ -209,11 +250,16 @@ const Navigation = () => {
               </Menu>
             </Box>
           ) : (
-            <Box sx={{ flexGrow: 0 }}>
+            // Login/Register buttons - Only show on desktop
+            <Box sx={{ 
+              display: { xs: 'none', sm: 'flex' }, 
+              alignItems: 'center',
+              gap: 1
+            }}>
               <Button
                 component={Link}
                 to="/login"
-                sx={{ color: 'white', mr: 1 }}
+                sx={{ color: 'white' }}
               >
                 Login
               </Button>
@@ -229,6 +275,7 @@ const Navigation = () => {
           )}
         </Toolbar>
       </Container>
+      {mobileDrawer}
     </AppBar>
   );
 };

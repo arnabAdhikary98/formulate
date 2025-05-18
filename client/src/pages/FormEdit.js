@@ -36,15 +36,14 @@ import {
   Schedule as ScheduleIcon,
   Link as LinkIcon,
   ContentCopy as CopyIcon,
-  Lock as LockIcon,
+  LockOutlined as LockIcon,
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
 
 // Import components
 import FormBuilder from './FormBuilder';
 import { getFormById, updateForm, publishForm, closeForm } from '../api/forms';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider, DateTimePicker } from '@mui/x-date-pickers';
+import DateTimePicker from '../components/DateTimePicker';
 
 const FormEdit = () => {
   const { formId } = useParams();
@@ -70,17 +69,36 @@ const FormEdit = () => {
     const loadForm = async () => {
       try {
         const formData = await getFormById(formId);
-        setForm(formData);
+        console.log("Loaded form data:", formData);
+        
+        // Check if we have saved form data in session storage (from FormBuilder)
+        const savedFormData = sessionStorage.getItem('lastSavedForm');
+        if (savedFormData) {
+          const parsedForm = JSON.parse(savedFormData);
+          console.log("Found saved form data in session storage:", parsedForm);
+          setForm(parsedForm);
+          // Clear session storage after using it
+          sessionStorage.removeItem('lastSavedForm');
+        } else {
+          setForm(formData);
+        }
+        
         setLoading(false);
         
         // Set password state from form data
         setPasswordEnabled(formData.accessCode && !!formData.accessCode.enabled);
         setFormPassword((formData.accessCode && formData.accessCode.code) || '');
         
-        // Generate share URL
+        // Generate absolute share URL
         const baseUrl = window.location.origin;
-        setShareUrl(`${baseUrl}/forms/${formData.uniqueUrl}/respond`);
+        const formUrl = formData.uniqueUrl || formData._id;
+        // Create a fully qualified URL that works on all devices
+        const encodedFormUrl = encodeURIComponent(formUrl);
+        setShareUrl(`${baseUrl}/forms/${encodedFormUrl}/respond`);
+        console.log("Generated share URL:", `${baseUrl}/forms/${encodedFormUrl}/respond`, 
+                    "from original formUrl:", formUrl);
       } catch (err) {
+        console.error("Error loading form:", err);
         setError('Failed to load form. Please try again.');
         setLoading(false);
       }
@@ -91,6 +109,7 @@ const FormEdit = () => {
 
   // Handle form updates
   const handleFormUpdate = (updatedForm) => {
+    console.log("Form updated:", updatedForm);
     setForm(updatedForm);
   };
 
@@ -100,18 +119,41 @@ const FormEdit = () => {
     setError('');
     
     try {
+      // Create a deep copy to ensure all fields and nested properties are included
+      const formToSave = JSON.parse(JSON.stringify(form));
+      
       // Include password protection in form data
-      const formToSave = {
-        ...form,
-        accessCode: {
-          enabled: passwordEnabled,
-          code: passwordEnabled ? formPassword : null
-        }
+      formToSave.accessCode = {
+        enabled: passwordEnabled,
+        code: passwordEnabled ? formPassword : null
       };
       
-      await updateForm(formId, formToSave);
+      // Ensure all pages and fields have proper IDs and are structured correctly
+      if (formToSave.pages) {
+        formToSave.pages = formToSave.pages.map((page, pageIndex) => {
+          // Ensure page has order property
+          page.order = pageIndex;
+          
+          // Ensure fields are properly structured
+          if (page.fields) {
+            page.fields = page.fields.map((field, fieldIndex) => {
+              // Ensure field has order property
+              field.order = fieldIndex;
+              return field;
+            });
+          }
+          
+          return page;
+        });
+      }
+      
+      console.log("Saving form with structured data:", formToSave);
+      const updatedForm = await updateForm(formId, formToSave);
+      console.log("Form saved successfully:", updatedForm);
+      setForm(updatedForm);
       setSaving(false);
     } catch (err) {
+      console.error("Error saving form:", err);
       setError('Failed to save form. Please try again.');
       setSaving(false);
     }
@@ -393,15 +435,12 @@ const FormEdit = () => {
             Select when you want this form to be automatically published:
           </Typography>
           
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DateTimePicker
-              label="Publish Date & Time"
-              value={publishDate}
-              onChange={(newValue) => setPublishDate(newValue)}
-              minDateTime={new Date()}
-              renderInput={(params) => <TextField {...params} fullWidth />}
-            />
-          </LocalizationProvider>
+          <DateTimePicker
+            label="Publish Date & Time"
+            value={publishDate}
+            onChange={(newValue) => setPublishDate(newValue)}
+            minDateTime={new Date()}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setScheduleDialogOpen(false)}>Cancel</Button>
@@ -495,9 +534,11 @@ const FormEdit = () => {
           
           <Box mt={2}>
             <Typography variant="body2" color="textSecondary">
-              Anyone with this link can submit responses to your form.
+              Share this URL to allow users to access and submit responses to your form.
+              <br />
+              The link works on any device including mobile phones.
               {form.accessCode && form.accessCode.enabled && (
-                <strong> Note: Password protection is enabled.</strong>
+                <><br /><strong>Note: Password protection is enabled.</strong></>
               )}
             </Typography>
           </Box>

@@ -35,7 +35,10 @@ import {
   Select,
   FormControl,
   InputLabel,
-  FormLabel
+  FormLabel,
+  Chip,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -47,7 +50,11 @@ import {
   Edit as EditIcon,
   ArrowForward as ArrowForwardIcon,
   ArrowBack as ArrowBackIcon,
-  PublishOutlined as PublishIcon
+  PublishOutlined as PublishIcon,
+  Link as LinkIcon,
+  LockOutlined as LockIcon,
+  ContentCopy as CopyIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 
 // Import components
@@ -85,6 +92,9 @@ const emptyPage = {
 
 const FormBuilder = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -111,6 +121,18 @@ const FormBuilder = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [conditionsOpen, setConditionsOpen] = useState(false);
+  const [formId, setFormId] = useState('');
+  const [shareUrl, setShareUrl] = useState('');
+  
+  // New state variables
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false);
+  const [passwordEnabled, setPasswordEnabled] = useState(false);
+  const [formPassword, setFormPassword] = useState('');
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  const [formSaved, setFormSaved] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Handle adding a new field
   const handleAddField = (fieldType) => {
@@ -251,19 +273,29 @@ const FormBuilder = () => {
 
   // Add a new page
   const handleAddPage = () => {
-    const newPage = {
-      title: `Page ${formData.pages.length + 1}`,
-      description: '',
-      order: formData.pages.length,
-      fields: []
-    };
-    
-    setFormData({
-      ...formData,
-      pages: [...formData.pages, newPage]
-    });
-    
-    setActivePageIndex(formData.pages.length);
+    try {
+      const newPage = {
+        title: `Page ${formData.pages.length + 1}`,
+        description: '',
+        order: formData.pages.length,
+        fields: []
+      };
+      
+      const updatedFormData = {
+        ...formData,
+        pages: [...formData.pages, newPage]
+      };
+      
+      setFormData(updatedFormData);
+      // Use timeout to ensure state update completes before changing active page
+      setTimeout(() => {
+        setActivePageIndex(updatedFormData.pages.length - 1);
+      }, 0);
+      console.log("Added new page:", newPage);
+    } catch (error) {
+      console.error("Error adding page:", error);
+      setError("Failed to add page. Please try again.");
+    }
   };
 
   // Delete a page
@@ -304,7 +336,7 @@ const FormBuilder = () => {
   };
 
   // Save the form
-  const handleSaveForm = async () => {
+  const handleSaveForm = async (shouldPublish = false) => {
     if (!formData.title.trim()) {
       setError('Please add a form title');
       return;
@@ -314,13 +346,87 @@ const FormBuilder = () => {
     setError('');
 
     try {
-      const response = await createForm(formData);
+      // Create a deep copy to ensure all nested properties are included
+      const savedFormData = JSON.parse(JSON.stringify(formData));
+      
+      // Set status to published if requested
+      if (shouldPublish) {
+        savedFormData.status = 'published';
+      }
+      
+      // Ensure all pages and fields have proper structure
+      if (savedFormData.pages) {
+        savedFormData.pages = savedFormData.pages.map((page, pageIndex) => {
+          // Ensure page has order property
+          page.order = pageIndex;
+          
+          // Ensure fields are properly structured
+          if (page.fields) {
+            page.fields = page.fields.map((field, fieldIndex) => {
+              // Ensure field has order property
+              field.order = fieldIndex;
+              
+              // Ensure field has all required properties based on type
+              switch (field.type) {
+                case 'dropdown':
+                case 'radio':
+                case 'checkbox':
+                  field.options = field.options || ['Option 1', 'Option 2', 'Option 3'];
+                  break;
+                case 'number':
+                  field.min = field.min !== undefined ? field.min : 0;
+                  field.max = field.max !== undefined ? field.max : 100;
+                  field.step = field.step || 1;
+                  break;
+                case 'rating':
+                  field.max = field.max || 5;
+                  break;
+                default:
+                  break;
+              }
+              
+              // Make sure conditional logic is properly defined
+              field.conditional = field.conditional || {
+                isConditional: false,
+                dependsOn: null,
+                condition: 'equals',
+                value: ''
+              };
+              
+              return field;
+            });
+          }
+          
+          return page;
+        });
+      }
+      
+      console.log("Saving structured form data:", savedFormData);
+      const response = await createForm(savedFormData);
+      console.log("Form saved successfully:", response);
+      
+      // Update the current form data with the saved response
+      setFormData(response);
       setSaving(false);
-      navigate(`/forms/${response._id}/edit`);
+      
+      // If we have a form ID now, show success message
+      setError(`Form ${shouldPublish ? 'published' : 'saved'} successfully!`);
+      
+      // Store the ID for later use
+      if (response._id) {
+        setFormId(response._id);
+        sessionStorage.setItem('currentFormId', response._id);
+        // Set up share URL if the form has been published
+        if (response.status === 'published' || shouldPublish) {
+          const baseUrl = window.location.origin;
+          const formUrl = response.uniqueUrl || response._id;
+          setShareUrl(`${baseUrl}/forms/${formUrl}/respond`);
+        }
+      }
     } catch (err) {
+      console.error("Error saving form:", err);
       setSaving(false);
       setError('Failed to save form. Please try again.');
-      console.error(err);
     }
   };
 
@@ -370,6 +476,78 @@ const FormBuilder = () => {
     setConditionsOpen(!conditionsOpen);
   };
 
+  // Handle opening share dialog
+  const handleOpenShareDialog = () => {
+    if (!formId) {
+      // Save the form first before sharing
+      setError('Please save the form first before sharing');
+      return;
+    }
+    
+    // Generate share URL
+    const baseUrl = window.location.origin;
+    const formUrl = formData.uniqueUrl || formId;
+    setShareUrl(`${baseUrl}/forms/${formUrl}/respond`);
+    setShareDialogOpen(true);
+  };
+
+  // Handle copying share URL to clipboard
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopiedToClipboard(true);
+      setTimeout(() => {
+        setCopiedToClipboard(false);
+      }, 2000);
+    });
+  };
+
+  // Handle publishing form
+  const handlePublishForm = () => {
+    if (!formId) {
+      // Save with publish = true
+      handleSaveForm(true);
+    } else {
+      // Form already saved, update status to published
+      const updatedFormData = {
+        ...formData,
+        status: 'published',
+        accessCode: {
+          enabled: passwordEnabled,
+          code: passwordEnabled ? formPassword : null
+        }
+      };
+      setFormData(updatedFormData);
+      handleSaveForm(true);
+    }
+    setPublishDialogOpen(false);
+  };
+
+  // Handle access control settings
+  const handleSaveAccessSettings = () => {
+    // Update form data with password protection
+    const updatedFormData = {
+      ...formData,
+      accessCode: {
+        enabled: passwordEnabled,
+        code: passwordEnabled ? formPassword : null
+      }
+    };
+    setFormData(updatedFormData);
+    setAccessDialogOpen(false);
+    
+    // Save the form if it's already been saved once
+    if (formId) {
+      handleSaveForm();
+    } else {
+      setIsSuccess(true);
+      setError('Access control settings saved. Remember to save your form.');
+      setTimeout(() => {
+        setIsSuccess(false);
+        setError('');
+      }, 3000);
+    }
+  };
+
   // Update form settings
   const handleUpdateSettings = (updatedSettings) => {
     setFormData({
@@ -395,23 +573,56 @@ const FormBuilder = () => {
 
   return (
     <Container maxWidth="lg">
-      <Box py={3}>
-        <Paper elevation={0} sx={{ mb: 3, p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+      <Box py={{ xs: 2, md: 3 }}>
+        <Paper 
+          elevation={1} 
+          sx={{ 
+            p: { xs: 2, md: 3 }, 
+            mb: { xs: 2, md: 4 },
+            borderRadius: 2,
+            border: '1px solid #e0e0e0',
+            backgroundColor: '#f9fafb'
+          }}
+        >
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            mb: 3
+          }}>
             <TextField
               label="Form Title"
               variant="outlined"
               fullWidth
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              sx={{ mr: 2 }}
+              sx={{ mb: 2 }}
             />
-            <Box>
+            
+            <TextField
+              label="Form Description"
+              variant="outlined"
+              fullWidth
+              multiline
+              rows={2}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+            
+            {/* Mobile action buttons layout */}
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 1.5,
+              width: '100%'
+            }}>
               <Button
                 variant="outlined"
                 startIcon={<VisibilityIcon />}
                 onClick={handlePreview}
-                sx={{ mr: 1 }}
+                fullWidth
+                size="medium"
+                sx={{ height: '42px' }}
               >
                 Preview
               </Button>
@@ -419,33 +630,90 @@ const FormBuilder = () => {
                 variant="outlined"
                 startIcon={<SettingsIcon />}
                 onClick={toggleSettingsDialog}
-                sx={{ mr: 1 }}
+                fullWidth 
+                size="medium"
+                sx={{ height: '42px' }}
               >
                 Settings
               </Button>
               <Button
+                variant="outlined"
+                startIcon={<LockIcon />}
+                onClick={() => setAccessDialogOpen(true)}
+                fullWidth
+                size="medium"
+                sx={{ height: '42px' }}
+              >
+                Access
+              </Button>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<PublishIcon />}
+                onClick={() => setPublishDialogOpen(true)}
+                fullWidth
+                size="medium"
+                sx={{ height: '42px' }}
+              >
+                Publish
+              </Button>
+              {formId && (
+                <Button
+                  variant="outlined"
+                  startIcon={<LinkIcon />}
+                  onClick={handleOpenShareDialog}
+                  fullWidth
+                  size="medium"
+                  sx={{ height: '42px' }}
+                >
+                  Share
+                </Button>
+              )}
+              <Button
                 variant="contained"
                 color="primary"
-                startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-                onClick={handleSaveForm}
+                startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+                onClick={() => handleSaveForm()}
                 disabled={saving}
+                fullWidth
+                size="medium"
+                sx={{ 
+                  height: '42px',
+                  gridColumn: formId ? 'auto' : '1 / span 2'
+                }}
               >
-                Save Form
+                Save
               </Button>
             </Box>
+            
+            {formId && (
+              <Box mt={2} display="flex" alignItems="center">
+                <Typography variant="body2" color="textSecondary" mr={2} sx={{ fontSize: '0.75rem' }}>
+                  Form ID: {formId}
+                </Typography>
+                {formData.status && (
+                  <Chip 
+                    label={formData.status.charAt(0).toUpperCase() + formData.status.slice(1)} 
+                    color={
+                      formData.status === 'published' ? 'success' : 
+                      formData.status === 'draft' ? 'default' : 'primary'
+                    }
+                    size="small"
+                  />
+                )}
+              </Box>
+            )}
+            
+            {error && (
+              <Alert 
+                severity={isSuccess ? "success" : "error"} 
+                sx={{ mt: 2 }}
+                onClose={() => setError('')}
+              >
+                {error}
+              </Alert>
+            )}
           </Box>
-          
-          <TextField
-            label="Form Description"
-            variant="outlined"
-            fullWidth
-            multiline
-            rows={2}
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          />
-          
-          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </Paper>
 
         <Grid container spacing={3}>
@@ -460,24 +728,38 @@ const FormBuilder = () => {
             />
           </Grid>
 
+          {/* Form builder area - stack the fields and properties panel on mobile, side by side on larger screens */}
           <Grid item xs={12} md={8}>
             <Paper 
               elevation={0} 
               sx={{ 
-                p: 2, 
+                p: { xs: 1.5, md: 2 }, 
                 minHeight: '500px',
                 borderRadius: 2,
-                border: '1px solid #e0e0e0'
+                border: '1px solid #e0e0e0',
+                mb: { xs: 3, md: 0 }
               }}
             >
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6">
+              <Box 
+                display="flex" 
+                flexDirection={{ xs: 'column', sm: 'row' }} 
+                justifyContent="space-between" 
+                alignItems={{ xs: 'flex-start', sm: 'center' }} 
+                mb={2}
+              >
+                <Typography variant="h6" sx={{ mb: { xs: 1, sm: 0 } }}>
                   {formData.pages[activePageIndex].title}
                 </Typography>
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={(e) => setFieldTypeMenuAnchor(e.currentTarget)}
+                  fullWidth={isMobile}
+                  size={isMobile ? "medium" : "medium"}
+                  sx={{ 
+                    width: { xs: '100%', sm: 'auto' },
+                    height: '42px'
+                  }}
                 >
                   Add Field
                 </Button>
@@ -485,11 +767,18 @@ const FormBuilder = () => {
                   anchorEl={fieldTypeMenuAnchor}
                   open={Boolean(fieldTypeMenuAnchor)}
                   onClose={() => setFieldTypeMenuAnchor(null)}
+                  PaperProps={{
+                    style: {
+                      width: isMobile ? '80%' : 'auto',
+                      maxWidth: '300px'
+                    }
+                  }}
                 >
                   {fieldTypes.map((type) => (
                     <MenuItem 
                       key={type.type} 
                       onClick={() => handleAddField(type.type)}
+                      sx={{ py: 1.5 }}
                     >
                       {type.label}
                     </MenuItem>
@@ -511,7 +800,7 @@ const FormBuilder = () => {
                   flexDirection="column" 
                   alignItems="center" 
                   justifyContent="center" 
-                  p={4}
+                  p={{ xs: 2, md: 4 }}
                   sx={{ 
                     height: '200px', 
                     border: '2px dashed #e0e0e0',
@@ -519,13 +808,15 @@ const FormBuilder = () => {
                     backgroundColor: '#f9f9f9'
                   }}
                 >
-                  <Typography variant="body1" color="textSecondary" gutterBottom>
+                  <Typography variant="body1" color="textSecondary" gutterBottom sx={{ textAlign: 'center' }}>
                     No fields added yet
                   </Typography>
                   <Button
                     variant="outlined"
                     startIcon={<AddIcon />}
                     onClick={(e) => setFieldTypeMenuAnchor(e.currentTarget)}
+                    size={isMobile ? "small" : "medium"}
+                    sx={{ mt: 1 }}
                   >
                     Add Your First Field
                   </Button>
@@ -554,10 +845,11 @@ const FormBuilder = () => {
                                   variant="outlined" 
                                   sx={{
                                     borderColor: selectedFieldIndex === index ? 'primary.main' : 'inherit',
-                                    boxShadow: selectedFieldIndex === index ? '0 0 0 2px rgba(33,150,243,0.3)' : 'none'
+                                    boxShadow: selectedFieldIndex === index ? '0 0 0 2px rgba(33,150,243,0.3)' : 'none',
+                                    borderRadius: '8px'
                                   }}
                                 >
-                                  <CardContent sx={{ position: 'relative', pb: 1 }}>
+                                  <CardContent sx={{ position: 'relative', p: { xs: 1.5, md: 2 }, '&:last-child': { pb: { xs: 1.5, md: 2 } } }}>
                                     <Box
                                       {...provided.dragHandleProps}
                                       position="absolute"
@@ -565,7 +857,7 @@ const FormBuilder = () => {
                                       left="8px"
                                       sx={{ cursor: 'move' }}
                                     >
-                                      <DragIcon color="action" />
+                                      <DragIcon color="action" fontSize={isMobile ? "small" : "medium"} />
                                     </Box>
                                     <Box pl={4}>
                                       {renderField(field, index, snapshot.isDragging)}
@@ -589,13 +881,18 @@ const FormBuilder = () => {
             <Paper 
               elevation={0} 
               sx={{ 
-                p: 2, 
-                height: '100%',
+                p: { xs: 1.5, md: 2 }, 
+                minHeight: { xs: 'auto', md: '500px' },
                 borderRadius: 2,
                 border: '1px solid #e0e0e0'
               }}
             >
-              <Tabs value={currentTab} onChange={handleTabChange} sx={{ mb: 2 }}>
+              <Tabs 
+                value={currentTab} 
+                onChange={handleTabChange} 
+                sx={{ mb: 2 }}
+                variant={isMobile ? "fullWidth" : "standard"}
+              >
                 <Tab label="Properties" />
                 <Tab label="Conditions" />
               </Tabs>
@@ -649,15 +946,28 @@ const FormBuilder = () => {
       </Box>
 
       {/* Form Settings Dialog */}
-      <Dialog open={settingsOpen} onClose={toggleSettingsDialog} maxWidth="md" fullWidth>
-        <DialogTitle>Form Settings</DialogTitle>
+      <Dialog 
+        open={settingsOpen} 
+        onClose={toggleSettingsDialog} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Form Settings</Typography>
+            <IconButton edge="end" color="inherit" onClick={toggleSettingsDialog} aria-label="close">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <FormSettings
             settings={formData.settings}
             onUpdate={handleUpdateSettings}
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: { xs: 2, sm: 1 } }}>
           <Button onClick={toggleSettingsDialog}>Cancel</Button>
           <Button 
             variant="contained" 
@@ -670,8 +980,21 @@ const FormBuilder = () => {
 
       {/* Conditional Logic Dialog */}
       {selectedFieldIndex !== null && (
-        <Dialog open={conditionsOpen} onClose={toggleConditionsDialog} maxWidth="md" fullWidth>
-          <DialogTitle>Conditional Logic</DialogTitle>
+        <Dialog 
+          open={conditionsOpen} 
+          onClose={toggleConditionsDialog} 
+          maxWidth="md" 
+          fullWidth
+          fullScreen={isMobile}
+        >
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">Conditional Logic</Typography>
+              <IconButton edge="end" color="inherit" onClick={toggleConditionsDialog} aria-label="close">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
           <DialogContent>
             <FormConditions
               currentField={formData.pages[activePageIndex].fields[selectedFieldIndex]}
@@ -681,7 +1004,7 @@ const FormBuilder = () => {
               onUpdate={handleUpdateConditions}
             />
           </DialogContent>
-          <DialogActions>
+          <DialogActions sx={{ p: { xs: 2, sm: 1 } }}>
             <Button onClick={toggleConditionsDialog}>Close</Button>
           </DialogActions>
         </Dialog>
@@ -693,16 +1016,19 @@ const FormBuilder = () => {
         onClose={() => setPreviewOpen(false)}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="h6">Form Preview</Typography>
-            <Button onClick={() => setPreviewOpen(false)}>Close</Button>
+            <IconButton edge="end" color="inherit" onClick={() => setPreviewOpen(false)} aria-label="close">
+              <CloseIcon />
+            </IconButton>
           </Box>
         </DialogTitle>
         <DialogContent dividers>
-          <Box p={2}>
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+          <Box p={{ xs: 1, md: 2 }}>
+            <Paper elevation={2} sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
               <Typography variant="h5" gutterBottom>{formData.title}</Typography>
               {formData.description && (
                 <Typography variant="body1" color="textSecondary" paragraph>
@@ -712,7 +1038,12 @@ const FormBuilder = () => {
             </Paper>
 
             {formData.pages.length > 1 && formData.settings.showProgressBar && (
-              <Stepper activeStep={0} alternativeLabel sx={{ mb: 4 }}>
+              <Stepper 
+                activeStep={0} 
+                alternativeLabel={!isMobile}
+                orientation={isMobile ? "vertical" : "horizontal"}
+                sx={{ mb: 4 }}
+              >
                 {formData.pages.map((page, index) => (
                   <Step key={index}>
                     <StepLabel>{page.title}</StepLabel>
@@ -866,6 +1197,169 @@ const FormBuilder = () => {
             </Paper>
           </Box>
         </DialogContent>
+      </Dialog>
+
+      {/* Access Control Dialog */}
+      <Dialog 
+        open={accessDialogOpen} 
+        onClose={() => setAccessDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Access Control Settings</Typography>
+            <IconButton edge="end" color="inherit" onClick={() => setAccessDialogOpen(false)} aria-label="close">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <Typography variant="h6" gutterBottom>Password Protection</Typography>
+            
+            <FormControlLabel
+              control={
+                <Switch 
+                  checked={passwordEnabled}
+                  onChange={(e) => setPasswordEnabled(e.target.checked)} 
+                />
+              }
+              label="Require password to access form"
+            />
+            
+            {passwordEnabled && (
+              <TextField
+                label="Form Password"
+                type="password"
+                fullWidth
+                value={formPassword}
+                onChange={(e) => setFormPassword(e.target.value)}
+                margin="normal"
+                helperText="Users will need to enter this password to access your form"
+              />
+            )}
+            
+            <Divider sx={{ my: 3 }} />
+            
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Note: Access control settings apply to all form states (published, scheduled, etc.)
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: { xs: 2, sm: 1 } }}>
+          <Button onClick={() => setAccessDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleSaveAccessSettings}
+            variant="contained" 
+            color="primary"
+            disabled={passwordEnabled && !formPassword}
+          >
+            Save Settings
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Share Dialog */}
+      <Dialog 
+        open={shareDialogOpen} 
+        onClose={() => setShareDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Share Form</Typography>
+            <IconButton edge="end" color="inherit" onClick={() => setShareDialogOpen(false)} aria-label="close">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" paragraph>
+            Use this link to share your form:
+          </Typography>
+          
+          <Box 
+            display="flex" 
+            flexDirection={isMobile ? "column" : "row"}
+            alignItems="stretch"
+            gap={1}
+          >
+            <TextField
+              fullWidth
+              value={shareUrl}
+              variant="outlined"
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={{ mr: isMobile ? 0 : 1 }}
+            />
+            
+            <Button 
+              variant="contained" 
+              color={copiedToClipboard ? "success" : "primary"}
+              startIcon={<CopyIcon />}
+              onClick={handleCopyUrl}
+              fullWidth={isMobile}
+            >
+              {copiedToClipboard ? "Copied!" : "Copy"}
+            </Button>
+          </Box>
+          
+          <Box mt={2}>
+            <Typography variant="body2" color="textSecondary">
+              Share this URL to allow users to access and submit responses to your form.
+              <br />
+              The link works on any device including mobile phones.
+              {passwordEnabled && (
+                <><br /><strong>Note: Password protection is enabled.</strong></>
+              )}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: { xs: 2, sm: 1 } }}>
+          <Button onClick={() => setShareDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Publish Dialog */}
+      <Dialog 
+        open={publishDialogOpen} 
+        onClose={() => setPublishDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Publish Form</Typography>
+            <IconButton edge="end" color="inherit" onClick={() => setPublishDialogOpen(false)} aria-label="close">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" paragraph>
+            Are you sure you want to publish this form? Once published, it will be immediately available to collect responses.
+          </Typography>
+          
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Publishing will save all your current changes.
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ p: { xs: 2, sm: 1 } }}>
+          <Button onClick={() => setPublishDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handlePublishForm} 
+            variant="contained" 
+            color="primary"
+          >
+            Publish
+          </Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );

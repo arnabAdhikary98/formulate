@@ -2,6 +2,35 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from '../App';
 
+// Mock axios and api
+jest.mock('axios', () => ({
+  create: jest.fn(() => ({
+    interceptors: {
+      request: { use: jest.fn() },
+      response: { use: jest.fn() }
+    },
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn()
+  }))
+}));
+
+// Mock the API module that uses axios
+jest.mock('../api/axios', () => ({
+  __esModule: true,
+  default: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+    interceptors: {
+      request: { use: jest.fn() },
+      response: { use: jest.fn() }
+    }
+  }
+}));
+
 // Mock the Router and other dependencies
 jest.mock('react-router-dom', () => ({
   BrowserRouter: ({ children }) => <div data-testid="router">{children}</div>,
@@ -73,6 +102,10 @@ jest.mock('../pages/PublicForm', () => {
 
 jest.mock('../pages/ThankYou', () => {
   return () => <div data-testid="page-thank-you">Thank You Page</div>;
+});
+
+jest.mock('../pages/Profile', () => {
+  return () => <div data-testid="page-profile">Profile Page</div>;
 });
 
 describe('App component', () => {

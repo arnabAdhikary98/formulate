@@ -5,19 +5,105 @@ const Form = require('../models/Form');
 // @access  Private
 const createForm = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    // Extract all form data from request body
+    const formData = { ...req.body };
+    
+    // Ensure creator is set
+    formData.creator = req.user._id;
+    
+    // Log the form data being saved
+    console.log('Creating new form with data:', JSON.stringify(formData));
+    
+    // Ensure pages and fields have proper structure
+    if (!formData.pages || !Array.isArray(formData.pages) || formData.pages.length === 0) {
+      // Set default page if missing
+      formData.pages = [{ title: 'Page 1', order: 0, fields: [] }];
+    } else {
+      // Process existing pages to ensure proper structure
+      formData.pages = formData.pages.map((page, pageIndex) => {
+        // Ensure page has an order
+        page.order = pageIndex;
+        
+        // Process fields if they exist
+        if (page.fields && Array.isArray(page.fields)) {
+          page.fields = page.fields.map((field, fieldIndex) => {
+            // Ensure field has proper structure
+            return {
+              ...field,
+              order: fieldIndex,
+              // Ensure conditional logic is properly structured
+              conditional: field.conditional || {
+                isConditional: false,
+                condition: 'equals',
+                value: ''
+              }
+            };
+          });
+        } else {
+          page.fields = [];
+        }
+        
+        return page;
+      });
+    }
 
-    const form = await Form.create({
-      title,
-      description,
-      creator: req.user._id,
-      pages: [{ title: 'Page 1', order: 1, fields: [] }], // Default first page
-    });
+    // Check if we need to update an existing form or create a new one
+    let form;
+    
+    if (formData._id) {
+      // This might be an update with existing ID - check if it exists
+      try {
+        const existingForm = await Form.findById(formData._id);
+        
+        if (existingForm) {
+          // If existing form belongs to this user, update it instead of creating new
+          if (existingForm.creator.toString() === req.user._id.toString()) {
+            console.log(`Updating existing form with ID: ${existingForm._id}`);
+            
+            // Remove _id from formData to prevent MongoDB error
+            delete formData._id;
+            
+            form = await Form.findByIdAndUpdate(
+              existingForm._id,
+              formData,
+              { new: true, runValidators: true }
+            );
+            console.log('Form updated successfully');
+          } else {
+            // ID exists but doesn't belong to this user, create new without the ID
+            delete formData._id;
+            form = await Form.create(formData);
+            console.log('Form created with new ID:', form._id);
+          }
+        } else {
+          // ID was provided but doesn't exist, create new without the ID
+          delete formData._id;
+          form = await Form.create(formData);
+          console.log('Form created with new ID:', form._id);
+        }
+      } catch (error) {
+        // Error finding by ID - create new without the ID
+        console.log('Error checking form ID, creating new:', error.message);
+        delete formData._id;
+        form = await Form.create(formData);
+        console.log('Form created with new ID:', form._id);
+      }
+    } else {
+      // No ID provided, create new
+      form = await Form.create(formData);
+      console.log('Form created with new ID:', form._id);
+    }
+    
+    // Generate a unique URL for the form if one doesn't exist
+    if (!form.uniqueUrl) {
+      form.uniqueUrl = form._id.toString();
+      await form.save();
+    }
 
     res.status(201).json(form);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error creating form:', error);
+    res.status(500).json({ message: 'Server error creating form', error: error.message });
   }
 };
 
@@ -64,11 +150,26 @@ const getFormById = async (req, res) => {
 // @access  Public
 const getFormByUrl = async (req, res) => {
   try {
-    const form = await Form.findOne({ uniqueUrl: req.params.uniqueUrl });
+    console.log(`Attempting to find form with uniqueUrl: "${req.params.uniqueUrl}"`);
+    
+    // Decode the URL parameter in case it was encoded
+    const decodedUrl = decodeURIComponent(req.params.uniqueUrl);
+    
+    // Try to find by uniqueUrl first
+    let form = await Form.findOne({ uniqueUrl: decodedUrl });
+    
+    // If not found and the URL looks like a MongoDB ID, try finding by ID
+    if (!form && /^[0-9a-fA-F]{24}$/.test(decodedUrl)) {
+      console.log(`No form found with uniqueUrl, trying as MongoDB ID: ${decodedUrl}`);
+      form = await Form.findById(decodedUrl);
+    }
 
     if (!form) {
+      console.log(`Form not found for uniqueUrl or ID: ${decodedUrl}`);
       return res.status(404).json({ message: 'Form not found' });
     }
+    
+    console.log(`Form found: ${form._id}, status: ${form.status}`);
 
     // Check form status
     if (form.status === 'draft') {
@@ -95,8 +196,8 @@ const getFormByUrl = async (req, res) => {
 
     res.json(responseForm);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error getting form by URL:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -116,17 +217,48 @@ const updateForm = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this form' });
     }
 
-    // Update form fields
+    // Log the incoming update payload to debug field saving issues
+    console.log('Updating form with ID:', req.params.id);
+    console.log('Update payload:', JSON.stringify(req.body));
+    
+    // Ensure the request body has all required nested structures
+    const formData = { ...req.body };
+    
+    // Make sure we don't lose the creator when updating
+    formData.creator = form.creator;
+    
+    // Clean up fields data to ensure it matches the schema
+    if (formData.pages && Array.isArray(formData.pages)) {
+      formData.pages = formData.pages.map((page, pageIndex) => {
+        // Ensure page properties match schema
+        if (page.fields && Array.isArray(page.fields)) {
+          page.fields = page.fields.map((field, fieldIndex) => {
+            // Ensure field has all required properties
+            return {
+              ...field,
+              order: fieldIndex
+            };
+          });
+        }
+        return {
+          ...page,
+          order: pageIndex
+        };
+      });
+    }
+
+    // Update form with new data
     const updatedForm = await Form.findByIdAndUpdate(
       req.params.id,
-      { ...req.body },
+      formData,
       { new: true, runValidators: true }
     );
 
+    console.log('Form updated successfully');
     res.json(updatedForm);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error updating form:', error);
+    res.status(500).json({ message: 'Server error updating form' });
   }
 };
 

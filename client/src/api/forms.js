@@ -20,8 +20,18 @@ export const getFormById = async (formId) => {
 
 // Get a form by its unique URL (for submissions)
 export const getFormByUrl = async (uniqueUrl) => {
-  const response = await api.get(`/forms/url/${uniqueUrl}`);
-  return response.data;
+  try {
+    // The uniqueUrl should already be properly encoded by the calling function
+    // But we'll handle any edge cases here
+    const url = `/forms/url/${uniqueUrl}`;
+    console.log(`Making API request to: ${url}`);
+    
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching form by URL:', error);
+    throw error;
+  }
 };
 
 // Update a form

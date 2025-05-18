@@ -1,8 +1,15 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+
+// Mock the AuthContext to avoid dependency on axios
+jest.mock('../context/AuthContext', () => ({
+  AuthContext: {
+    Provider: ({ children, value }) => <div>{children}</div>,
+    Consumer: ({ children }) => children({ isAuthenticated: true, user: null }),
+  },
+}));
 
 // Create a theme for testing
 const theme = createTheme({
@@ -40,9 +47,7 @@ export const renderWithProviders = (
   const AllProviders = ({ children }) => {
     return (
       <ThemeProvider theme={theme}>
-        <AuthContext.Provider value={{ ...defaultAuthContext, ...authProviderProps }}>
-          <BrowserRouter>{children}</BrowserRouter>
-        </AuthContext.Provider>
+        <BrowserRouter>{children}</BrowserRouter>
       </ThemeProvider>
     );
   };

@@ -1,82 +1,146 @@
-# Formulate - Dynamic Form Builder & Survey Collector
+# Formulate - Modern Form Builder & Survey Solution
 
-A full-stack MERN application for creating custom surveys and data collection forms without writing code.
+![Formulate App](./assets/formulate-homepage.png)
 
-![Formulate App Banner](https://via.placeholder.com/1200x300.png?text=Formulate:+Dynamic+Form+Builder)
+## About Formulate
 
-## Features
+Formulate is a powerful, full-stack form builder application that allows users to create custom forms, surveys, and data collection tools without writing a single line of code. Built with the MERN stack (MongoDB, Express, React, Node.js), Formulate provides an intuitive drag-and-drop interface for creating professional forms with advanced features.
 
-- **Visual Form Designer:** Create forms with different field types including text, email, number, dropdown, checkbox, and rating
-- **Conditional Logic:** Show/hide fields based on previous answers
-- **Multi-page Forms:** Create forms with multiple pages and a progress bar
-- **Response Collection:** Collect anonymous responses with validation
-- **Results Dashboard:** View and analyze form responses with visualizations
-- **Export & Automations:** Export data to CSV/XLSX and configure webhooks
+### Key Capabilities
 
-## Technologies Used
+- **Visual Form Builder:** Create professional forms with an intuitive drag-and-drop interface
+- **Diverse Field Types:** Use text, email, number, dropdown, checkbox, radio button, and rating fields
+- **Multi-page Forms:** Create forms with multiple pages and progress indicators
+- **Conditional Logic:** Show or hide fields based on user responses
+- **Real-time Preview:** Test your forms as you build them
+- **Response Collection:** Gather and manage form submissions securely
+- **Response Analytics:** View submission statistics and download response data
+- **Form Sharing:** Generate unique links for distributing your forms
+- **Access Control:** Protect forms with password options
+- **Mobile Responsive:** Full functionality across all device sizes
+
+## Mobile Optimized Experience
+
+Formulate is built with a mobile-first approach, ensuring seamless form building and submission on any device.
+
+![Mobile Responsive Design](./assets/formulate-mobile.png)
+
+## Technology Stack
 
 ### Frontend
-- React
-- Material-UI for modern UI components
-- React Router for navigation
-- React Beautiful DnD for drag-and-drop functionality
-- Chart.js for data visualization
-- React Hook Form for form validation
+- **React.js** - Component-based UI library
+- **Material-UI** - React component library with responsive design
+- **React Router** - Client-side routing
+- **React Beautiful DnD** - Drag-and-drop functionality
+- **Axios** - HTTP client for API requests
+- **Context API** - State management
 
 ### Backend
-- Node.js & Express.js for API development
-- MongoDB with Mongoose for data storage
-- JWT authentication for user management
-- RESTful API architecture
+- **Node.js** - JavaScript runtime environment
+- **Express.js** - Web application framework
+- **MongoDB** - NoSQL database
+- **Mongoose** - Object Data Modeling (ODM) library
+- **JWT** - JSON Web Token authentication
+- **Bcrypt** - Password hashing
 
-## Project Structure
+### Development & Deployment
+- **Webpack** - Module bundling
+- **Babel** - JavaScript compiler
+- **ESLint** - Code quality tool
+- **Vercel** - Deployment platform
 
-- `/client` - React frontend application
-- `/server` - Node.js/Express backend API
+## Directory Structure
 
-## Installation and Setup
+```
+formulate/
+│
+├── client/                 # Frontend React application
+│   ├── public/             # Static files
+│   ├── src/                # Source files
+│   │   ├── api/            # API service functions
+│   │   ├── components/     # React components
+│   │   │   ├── FormBuilder/  # Form builder components
+│   │   │   └── FormFields/   # Form field components
+│   │   ├── context/        # React Context providers
+│   │   ├── pages/          # Page components
+│   │   ├── utils/          # Utility functions
+│   │   └── App.js          # Main application component
+│   └── package.json        # Frontend dependencies
+│
+├── server/                 # Backend Node.js/Express application
+│   ├── controllers/        # Request handlers
+│   ├── middleware/         # Express middleware
+│   ├── models/             # Mongoose data models
+│   ├── routes/             # API routes
+│   ├── utils/              # Utility functions
+│   ├── index.js            # Server entry point
+│   └── package.json        # Backend dependencies
+│
+├── assets/                 # Project images and assets
+└── README.md               # Project documentation
+```
 
-See the [INSTRUCTIONS.md](INSTRUCTIONS.md) file for detailed setup instructions.
+## Getting Started
 
-Quick start:
+### Prerequisites
+- Node.js (v14 or higher)
+- MongoDB (v4 or higher)
+- npm or yarn
+
+### Installation
+
 1. Clone the repository
-2. Install dependencies with `npm install` in both `/client` and `/server` directories
-3. Set up MongoDB and configure environment variables
-4. Run backend with `npm run dev` in `/server`
-5. Run frontend with `npm start` in `/client`
+   ```
+   git clone https://github.com/your-username/formulate.git
+   cd formulate
+   ```
 
-## Key Application Modules
+2. Install server dependencies
+   ```
+   cd server
+   npm install
+   ```
 
-### User Management
-- User registration and authentication
-- JWT-based authentication
-- Password hashing and security
+3. Install client dependencies
+   ```
+   cd ../client
+   npm install
+   ```
 
-### Form Builder
-- Drag-and-drop field positioning
-- Multiple field types with validation
-- Conditional logic for dynamic forms
-- Multi-page form creation
+4. Configure environment variables
+   - Create a `.env` file in the `/server` directory with:
+     ```
+     MONGO_URI=your_mongodb_connection_string
+     JWT_SECRET=your_jwt_secret
+     PORT=5000
+     ```
 
-### Response Collection
-- Anonymous form submissions
-- Validation based on field types
-- Prevention of duplicate submissions
-- Email notification (optional)
+5. Start the backend server
+   ```
+   npm run dev
+   ```
 
-### Analysis Dashboard
-- Response summary statistics
-- Visual data representation
-- Export to CSV/Excel
-- Individual response viewing
+6. Start the frontend application
+   ```
+   npm start
+   ```
 
-## Demo
+7. Open your browser and navigate to `http://localhost:3000`
 
-[View Live Demo](https://your-demo-url-here.com)
+## Live Demo
+
+Experience Formulate in action: [Formulate Demo](https://formulate-demo.vercel.app) (coming soon)
+
+## Deployment
+
+Formulate is deployed using Vercel for both frontend and backend:
+
+- Frontend: Deployed directly from the GitHub repository
+- Backend: Deployed as a Vercel Serverless Function
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 

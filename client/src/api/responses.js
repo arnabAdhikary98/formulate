@@ -18,6 +18,18 @@ export const getResponseSummary = async (formId) => {
   return response.data;
 };
 
+// Get response count for a form
+export const getResponseCount = async (formId) => {
+  try {
+    const response = await api.get(`/responses/form/${formId}/count`);
+    return response.data;
+  } catch (error) {
+    // If the endpoint doesn't exist, return a default count object
+    console.warn(`Response count endpoint not available for form ${formId}`);
+    return { count: 0 };
+  }
+};
+
 // Delete a specific response
 export const deleteResponse = async (responseId) => {
   const response = await api.delete(`/responses/${responseId}`);

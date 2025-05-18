@@ -20,6 +20,8 @@ const detectDevice = (userAgent) => {
 // @access  Public
 const submitResponse = async (req, res) => {
   try {
+    console.log('Receiving form submission:', JSON.stringify(req.body));
+    
     const { 
       formId, 
       answers, 
@@ -32,10 +34,23 @@ const submitResponse = async (req, res) => {
       files = []
     } = req.body;
 
+    if (!formId) {
+      console.error('Form submission missing formId');
+      return res.status(400).json({ message: 'Missing formId in request' });
+    }
+
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+      console.error('Form submission missing or invalid answers');
+      return res.status(400).json({ message: 'Missing or invalid answers in request' });
+    }
+
+    console.log(`Looking for form with ID: ${formId}`);
+    
     // Find the form
     const form = await Form.findById(formId);
 
     if (!form) {
+      console.error(`Form not found with ID: ${formId}`);
       return res.status(404).json({ message: 'Form not found' });
     }
 

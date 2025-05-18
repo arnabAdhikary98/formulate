@@ -11,12 +11,16 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Typography
+  Typography,
+  useMediaQuery,
+  useTheme,
+  Tooltip
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 
 const FormPageTabs = ({ 
@@ -27,6 +31,8 @@ const FormPageTabs = ({
   onAddPage, 
   onDeletePage 
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -79,10 +85,15 @@ const FormPageTabs = ({
           onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{ 
             flex: 1,
             '& .MuiTabs-flexContainer': {
               height: '100%'
+            },
+            '& .MuiTab-root': {
+              minWidth: isMobile ? 80 : 120,
+              padding: isMobile ? '6px 10px' : '12px 16px'
             }
           }}
         >
@@ -90,55 +101,73 @@ const FormPageTabs = ({
             <Tab 
               key={index} 
               label={
-                <Box display="flex" alignItems="center">
-                  <span>{page.title}</span>
-                  <span 
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditPage(index);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation();
-                        handleEditPage(index);
-                      }
-                    }}
-                    style={{ 
-                      cursor: 'pointer', 
-                      marginLeft: '8px',
-                      display: 'inline-flex'
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
+                <Box 
+                  display="flex" 
+                  alignItems="center" 
+                  sx={{ 
+                    fontSize: isMobile ? '0.75rem' : '0.875rem',
+                    flexWrap: 'nowrap'
+                  }}
+                >
+                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                    {page.title}
                   </span>
-                  {pages.length > 1 && (
-                    <span 
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        confirmDeletePage(index);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.stopPropagation();
-                          confirmDeletePage(index);
-                        }
-                      }}
-                      style={{ 
-                        cursor: 'pointer', 
-                        marginLeft: '4px',
-                        display: 'inline-flex'
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </span>
+                  {!isMobile && (
+                    <>
+                      <Tooltip title="Edit page">
+                        <span 
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditPage(index);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.stopPropagation();
+                              handleEditPage(index);
+                            }
+                          }}
+                          style={{ 
+                            cursor: 'pointer', 
+                            marginLeft: '8px',
+                            display: 'inline-flex'
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </span>
+                      </Tooltip>
+                      {pages.length > 1 && (
+                        <Tooltip title="Delete page">
+                          <span 
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmDeletePage(index);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.stopPropagation();
+                                confirmDeletePage(index);
+                              }
+                            }}
+                            style={{ 
+                              cursor: 'pointer', 
+                              marginLeft: '4px',
+                              display: 'inline-flex'
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </span>
+                        </Tooltip>
+                      )}
+                    </>
                   )}
                 </Box>
               }
               sx={{ height: '100%' }}
+              onClick={isMobile && index === activePageIndex ? () => handleEditPage(index) : undefined}
             />
           ))}
         </Tabs>
@@ -150,19 +179,64 @@ const FormPageTabs = ({
             px: 1 
           }}
         >
-          <IconButton 
-            color="primary" 
-            onClick={onAddPage}
-            title="Add new page"
-          >
-            <AddIcon />
-          </IconButton>
+          <Tooltip title="Add new page">
+            <IconButton 
+              color="primary" 
+              onClick={onAddPage}
+              size={isMobile ? "small" : "medium"}
+            >
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Paper>
 
+      {/* Context menu for active page on mobile */}
+      {isMobile && activePageIndex !== null && (
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            mb: 2 
+          }}
+        >
+          <Button
+            size="small"
+            startIcon={<EditIcon />}
+            onClick={() => handleEditPage(activePageIndex)}
+            sx={{ mr: 1 }}
+          >
+            Edit Page
+          </Button>
+          {pages.length > 1 && (
+            <Button
+              size="small"
+              startIcon={<DeleteIcon />}
+              color="error"
+              onClick={() => confirmDeletePage(activePageIndex)}
+            >
+              Delete
+            </Button>
+          )}
+        </Box>
+      )}
+
       {/* Edit Page Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Edit Page</DialogTitle>
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={() => setEditDialogOpen(false)}
+        fullScreen={isMobile}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Edit Page</Typography>
+            <IconButton edge="end" color="inherit" onClick={() => setEditDialogOpen(false)} aria-label="close">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
             <TextField
@@ -185,7 +259,7 @@ const FormPageTabs = ({
             />
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: isMobile ? 2 : 1 }}>
           <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
           <Button 
             onClick={handleSavePageEdit} 

@@ -66,10 +66,27 @@ const PublicForm = () => {
     const loadForm = async () => {
       try {
         console.log("Loading form with URL:", formUrl);
-        const formData = await getFormByUrl(formUrl);
+        
+        if (!formUrl) {
+          console.error("No form URL provided");
+          setError('Invalid form URL. Please check the link and try again.');
+          setLoading(false);
+          return;
+        }
+        
+        // Ensure formUrl is properly encoded for API request
+        // But we need to decode it first to avoid double-encoding
+        const normalizedUrl = decodeURIComponent(formUrl);
+        const encodedUrl = encodeURIComponent(normalizedUrl);
+        
+        console.log(`Fetching form with normalized URL: ${normalizedUrl}, encoded as: ${encodedUrl}`);
+        
+        // Try to load the form
+        const formData = await getFormByUrl(encodedUrl);
         console.log("Form data loaded:", formData);
         
-        if (!formData) {
+        if (!formData || Object.keys(formData).length === 0) {
+          console.error("Form data is empty or null");
           setError('Form not found or no longer available.');
           setLoading(false);
           return;
@@ -87,22 +104,34 @@ const PublicForm = () => {
           return;
         }
         
-        setForm(formData);
-        
         // Initialize form values
         const initialValues = {};
-        formData.pages.forEach(page => {
-          page.fields.forEach(field => {
-            initialValues[field._id] = getInitialValueForField(field);
+        if (formData.pages && Array.isArray(formData.pages)) {
+          formData.pages.forEach(page => {
+            if (page.fields && Array.isArray(page.fields)) {
+              page.fields.forEach(field => {
+                initialValues[field._id] = getInitialValueForField(field);
+              });
+            }
           });
-        });
+        }
+        
+        setForm(formData);
         setFormValues(initialValues);
         
-        // Check if password protected
-        if (formData.passwordProtected) {
+        // Check if password protected - notice we're checking both possible property names
+        const isPasswordProtected = 
+          (formData.passwordProtected && formData.passwordProtected === true) ||
+          (formData.accessCode && formData.accessCode.enabled === true);
+        
+        console.log("Is form password protected:", isPasswordProtected);
+        
+        if (isPasswordProtected) {
+          console.log("Form is password protected");
           setPasswordDialog(true);
           setAuthenticated(false);
         } else {
+          console.log("Form is not password protected, setting authenticated to true");
           setAuthenticated(true);
         }
         
@@ -307,7 +336,7 @@ const PublicForm = () => {
       return;
     }
     
-    if (form.settings.preventDuplicateSubmissions) {
+    if (form.settings?.preventDuplicateSubmissions) {
       const hasSubmitted = Cookies.get(`form_submitted_${form._id}`);
       if (hasSubmitted === 'true') {
         setError('You have already submitted this form. Multiple submissions are not allowed.');
@@ -341,27 +370,41 @@ const PublicForm = () => {
       });
       
       const responseData = {
-        form: form._id,
+        formId: form._id,
         answers,
-        respondentEmail: form.settings.collectEmail ? email : undefined
+        respondentEmail: form.settings?.collectEmail ? email : undefined
       };
       
-      await submitResponse(responseData);
+      console.log('Submitting form response:', responseData);
       
-      // Set cookie to prevent duplicate submissions
-      if (form.settings.preventDuplicateSubmissions) {
-        // Set cookie to expire in 30 days
-        Cookies.set(`form_submitted_${form._id}`, 'true', { expires: 30 });
-      }
-      
-      // Redirect to thank you page or custom URL
-      if (form.settings.redirectUrl) {
-        window.location.href = form.settings.redirectUrl;
-      } else {
-        navigate('/thank-you', { state: { formTitle: form.title } });
+      try {
+        // Submit the response
+        const result = await submitResponse(responseData);
+        console.log('Form submission successful:', result);
+        
+        // Set cookie to prevent duplicate submissions
+        if (form.settings?.preventDuplicateSubmissions) {
+          // Set cookie to expire in 30 days
+          Cookies.set(`form_submitted_${form._id}`, 'true', { expires: 30 });
+        }
+        
+        // Show success message before redirecting
+        setError('');
+        
+        // Redirect to thank you page or custom URL
+        if (form.settings?.redirectUrl) {
+          window.location.href = form.settings.redirectUrl;
+        } else {
+          navigate('/thank-you', { state: { formTitle: form.title } });
+        }
+      } catch (submitError) {
+        console.error('Form submission failed:', submitError);
+        setError('Failed to submit form. The server might be unavailable or the form may no longer be accepting responses.');
+        setSubmitting(false);
       }
     } catch (err) {
-      setError('Failed to submit form. Please try again.');
+      console.error('Error preparing form submission:', err);
+      setError('Failed to prepare form submission. Please check your answers and try again.');
       setSubmitting(false);
     }
   };
@@ -374,10 +417,23 @@ const PublicForm = () => {
     }
     
     try {
-      // Call the API to verify the password
-      const response = await verifyFormPassword(form._id, password);
+      console.log("Verifying password for form:", form._id);
       
-      if (response.verified) {
+      // Check if the form uses the old or new password protection mechanism
+      let verified = false;
+      
+      if (form.accessCode && form.accessCode.enabled) {
+        // New mechanism - check against accessCode.code directly
+        verified = password === form.accessCode.code;
+        console.log("Using accessCode mechanism, verified:", verified);
+      } else {
+        // Old mechanism - call API
+        const response = await verifyFormPassword(form._id, password);
+        console.log("Password verification response:", response);
+        verified = response && response.verified;
+      }
+      
+      if (verified) {
         setAuthenticated(true);
         setPasswordDialog(false);
         setPasswordError('');
@@ -385,6 +441,7 @@ const PublicForm = () => {
         setPasswordError('Incorrect password');
       }
     } catch (err) {
+      console.error("Error verifying password:", err);
       setPasswordError('Error verifying password. Please try again.');
     }
   };
@@ -630,9 +687,12 @@ const PublicForm = () => {
   // Render the main form content
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-        <CircularProgress />
-      </Box>
+      <Container maxWidth="md">
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <CircularProgress />
+          <Typography variant="h6" sx={{ ml: 2 }}>Loading form...</Typography>
+        </Box>
+      </Container>
     );
   }
 
