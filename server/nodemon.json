@@ -1,0 +1,13 @@
+{
+  "verbose": false,
+  "watch": ["*.js", "routes/", "models/", "controllers/", "middleware/", "utils/"],
+  "ignore": ["node_modules/", "uploads/", "tmp/", "*.test.js", "tests/"],
+  "env": {
+    "NODE_ENV": "development",
+    "PORT": 5000
+  },
+  "delay": "500",
+  "execMap": {
+    "js": "node --max-old-space-size=4096"
+  }
+} 

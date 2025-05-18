@@ -1,0 +1,37 @@
+{
+  "name": "formulate",
+  "version": "1.0.0",
+  "description": "Dynamic Form Builder & Survey Collector",
+  "main": "index.js",
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "install-all": "npm i && cd server && npm i && cd ../client && npm i",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev:fast": "concurrently \"cd server && npm run dev:fast\" \"cd client && npm run start:fast\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "build:all": "npm run build && npm run build:server",
+    "test": "cd client && npm run test",
+    "test:coverage": "cd client && npm run test:coverage",
+    "test:ci": "cd client && npm run test:ci",
+    "test:all": "cd client && npm run test:all",
+    "test:server": "cd server && npm test",
+    "postinstall": "npm run install-deps",
+    "install-deps": "concurrently \"cd server && npm install\" \"cd client && npm install\""
+  },
+  "keywords": [
+    "form",
+    "survey",
+    "builder",
+    "mern"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+} 

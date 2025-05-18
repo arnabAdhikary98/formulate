@@ -1,0 +1,35 @@
+{
+  "presets": [
+    ["@babel/preset-env", {
+      "bugfixes": true,
+      "useBuiltIns": "usage",
+      "corejs": 3,
+      "modules": false,
+      "targets": {
+        "browsers": [
+          "last 2 Chrome versions",
+          "last 2 Firefox versions",
+          "last 2 Safari versions",
+          "last 2 Edge versions"
+        ]
+      }
+    }],
+    ["@babel/preset-react", { "runtime": "automatic" }]
+  ],
+  "plugins": [
+    ["@babel/plugin-transform-runtime", {
+      "corejs": 3,
+      "regenerator": true
+    }]
+  ],
+  "env": {
+    "development": {
+      "compact": false,
+      "cacheDirectory": true,
+      "sourceMaps": "cheap-module-source-map"
+    },
+    "production": {
+      "compact": true
+    }
+  }
+} 

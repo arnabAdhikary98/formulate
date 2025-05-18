@@ -1,0 +1,25 @@
+import api from './axios';
+
+// Submit a response to a form (public)
+export const submitResponse = async (responseData) => {
+  const response = await api.post('/responses', responseData);
+  return response.data;
+};
+
+// Get all responses for a form
+export const getFormResponses = async (formId) => {
+  const response = await api.get(`/responses/form/${formId}`);
+  return response.data;
+};
+
+// Get summary of responses for a form
+export const getResponseSummary = async (formId) => {
+  const response = await api.get(`/responses/form/${formId}/summary`);
+  return response.data;
+};
+
+// Delete a specific response
+export const deleteResponse = async (responseId) => {
+  const response = await api.delete(`/responses/${responseId}`);
+  return response.data;
+}; 
