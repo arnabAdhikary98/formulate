@@ -129,14 +129,14 @@ formulate/
 
 ## Live Demo
 
-Experience Formulate in action: [Formulate Demo](https://formulate-demo.vercel.app) (coming soon)
+Experience Formulate in action: [Formulate Demo](https://formulate-theta.vercel.app/)
 
 ## Deployment
 
-Formulate is deployed using Vercel for both frontend and backend:
+Formulate is deployed using:
 
-- Frontend: Deployed directly from the GitHub repository
-- Backend: Deployed as a Vercel Serverless Function
+- Frontend: Deployed on [Vercel](https://vercel.com)
+- Backend: Deployed on [Render](https://render.com)
 
 ## License
 
