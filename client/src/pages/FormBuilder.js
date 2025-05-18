@@ -274,6 +274,7 @@ const FormBuilder = () => {
   // Add a new page
   const handleAddPage = () => {
     try {
+      // Create the new page
       const newPage = {
         title: `Page ${formData.pages.length + 1}`,
         description: '',
@@ -281,17 +282,23 @@ const FormBuilder = () => {
         fields: []
       };
       
-      const updatedFormData = {
-        ...formData,
-        pages: [...formData.pages, newPage]
-      };
+      // Create a new pages array with the new page added
+      const updatedPages = [...formData.pages, newPage];
       
-      setFormData(updatedFormData);
-      // Use timeout to ensure state update completes before changing active page
-      setTimeout(() => {
-        setActivePageIndex(updatedFormData.pages.length - 1);
-      }, 0);
-      console.log("Added new page:", newPage);
+      // Update the form data with the new pages array
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        pages: updatedPages
+      }));
+      
+      // Set the active page index to the new page index
+      const newPageIndex = updatedPages.length - 1;
+      setActivePageIndex(newPageIndex);
+      
+      // Reset the selected field index since we're changing pages
+      setSelectedFieldIndex(null);
+      
+      console.log("Added new page:", newPage, "New active index:", newPageIndex);
     } catch (error) {
       console.error("Error adding page:", error);
       setError("Failed to add page. Please try again.");
@@ -409,8 +416,15 @@ const FormBuilder = () => {
       setFormData(response);
       setSaving(false);
       
-      // If we have a form ID now, show success message
+      // Set success message and auto-dismiss after 1 second
+      setIsSuccess(true);
       setError(`Form ${shouldPublish ? 'published' : 'saved'} successfully!`);
+      
+      // Auto-dismiss the success message after 1 second
+      const timer = setTimeout(() => {
+        setError('');
+        setIsSuccess(false);
+      }, 1000);
       
       // Store the ID for later use
       if (response._id) {
@@ -423,6 +437,8 @@ const FormBuilder = () => {
           setShareUrl(`${baseUrl}/forms/${formUrl}/respond`);
         }
       }
+      
+      return () => clearTimeout(timer);
     } catch (err) {
       console.error("Error saving form:", err);
       setSaving(false);
@@ -472,8 +488,14 @@ const FormBuilder = () => {
   };
 
   // Toggle conditional logic dialog
-  const toggleConditionsDialog = () => {
-    setConditionsOpen(!conditionsOpen);
+  const toggleConditionsDialog = (e) => {
+    // Prevent default behavior to avoid page navigation
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    
+    console.log("Toggling conditions dialog. Current state:", conditionsOpen);
+    setConditionsOpen(prevState => !prevState);
   };
 
   // Handle opening share dialog
@@ -544,7 +566,7 @@ const FormBuilder = () => {
       setTimeout(() => {
         setIsSuccess(false);
         setError('');
-      }, 3000);
+      }, 1000);
     }
   };
 
@@ -562,13 +584,43 @@ const FormBuilder = () => {
 
   // Update conditional logic
   const handleUpdateConditions = (fieldIndex, conditions) => {
-    const updatedPages = [...formData.pages];
-    updatedPages[activePageIndex].fields[fieldIndex].conditional = conditions;
-    
-    setFormData({
-      ...formData,
-      pages: updatedPages
-    });
+    try {
+      console.log("Updating conditions for field index:", fieldIndex, "with:", conditions);
+      
+      // Create a deep copy of the form data to avoid mutation issues
+      const updatedPages = JSON.parse(JSON.stringify(formData.pages));
+      
+      // Ensure the conditions object has the correct structure
+      const formattedConditions = {
+        isConditional: conditions.isConditional,
+        dependsOn: conditions.dependsOn,
+        condition: conditions.condition || 'equals',
+        value: conditions.value || ''
+      };
+      
+      // Update the field's conditional logic
+      if (updatedPages[activePageIndex] && 
+          updatedPages[activePageIndex].fields && 
+          updatedPages[activePageIndex].fields[fieldIndex]) {
+        updatedPages[activePageIndex].fields[fieldIndex].conditional = formattedConditions;
+        
+        // Update the form data with the new pages
+        setFormData(prevData => ({
+          ...prevData,
+          pages: updatedPages
+        }));
+        
+        console.log("Conditions updated successfully");
+      } else {
+        console.error("Failed to update conditions: Invalid field index or page structure");
+      }
+      
+      // Close the conditions dialog
+      setConditionsOpen(false);
+    } catch (error) {
+      console.error("Error updating conditions:", error);
+      setError("Failed to update conditions. Please try again.");
+    }
   };
 
   return (
@@ -708,7 +760,8 @@ const FormBuilder = () => {
               <Alert 
                 severity={isSuccess ? "success" : "error"} 
                 sx={{ mt: 2 }}
-                onClose={() => setError('')}
+                action={isSuccess ? null : undefined}
+                onClose={isSuccess ? null : () => setError('')}
               >
                 {error}
               </Alert>
@@ -739,6 +792,7 @@ const FormBuilder = () => {
                 border: '1px solid #e0e0e0',
                 mb: { xs: 3, md: 0 }
               }}
+              key={`page-content-${activePageIndex}`}
             >
               <Box 
                 display="flex" 
@@ -748,7 +802,7 @@ const FormBuilder = () => {
                 mb={2}
               >
                 <Typography variant="h6" sx={{ mb: { xs: 1, sm: 0 } }}>
-                  {formData.pages[activePageIndex].title}
+                  {formData.pages[activePageIndex]?.title || `Page ${activePageIndex + 1}`}
                 </Typography>
                 <Button
                   variant="contained"
@@ -788,13 +842,13 @@ const FormBuilder = () => {
 
               <Box mb={2}>
                 <Typography variant="body2" color="textSecondary">
-                  {formData.pages[activePageIndex].description}
+                  {formData.pages[activePageIndex]?.description || ''}
                 </Typography>
               </Box>
 
               <Divider sx={{ mb: 3 }} />
 
-              {formData.pages[activePageIndex].fields.length === 0 ? (
+              {!formData.pages[activePageIndex] || formData.pages[activePageIndex].fields.length === 0 ? (
                 <Box 
                   display="flex" 
                   flexDirection="column" 
@@ -918,7 +972,11 @@ const FormBuilder = () => {
                   <Button
                     variant="outlined"
                     fullWidth
-                    onClick={toggleConditionsDialog}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      toggleConditionsDialog(e);
+                    }}
                   >
                     Configure Conditions
                   </Button>
@@ -981,32 +1039,39 @@ const FormBuilder = () => {
       {/* Conditional Logic Dialog */}
       {selectedFieldIndex !== null && (
         <Dialog 
-          open={conditionsOpen} 
-          onClose={toggleConditionsDialog} 
+          open={conditionsOpen}
+          onClose={toggleConditionsDialog}
           maxWidth="md" 
           fullWidth
           fullScreen={isMobile}
+          disableEnforceFocus
         >
           <DialogTitle>
             <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Typography variant="h6">Conditional Logic</Typography>
+              <Typography variant="h6">Conditional Logic for {formData.pages[activePageIndex]?.fields[selectedFieldIndex]?.label || 'Field'}</Typography>
               <IconButton edge="end" color="inherit" onClick={toggleConditionsDialog} aria-label="close">
                 <CloseIcon />
               </IconButton>
             </Box>
           </DialogTitle>
           <DialogContent>
-            <FormConditions
-              currentField={formData.pages[activePageIndex].fields[selectedFieldIndex]}
-              allFields={formData.pages.flatMap(page => page.fields)}
-              currentFieldIndex={selectedFieldIndex}
-              conditional={formData.pages[activePageIndex].fields[selectedFieldIndex].conditional}
-              onUpdate={handleUpdateConditions}
-            />
+            {formData.pages[activePageIndex] && formData.pages[activePageIndex].fields && formData.pages[activePageIndex].fields[selectedFieldIndex] && (
+              <FormConditions
+                currentField={formData.pages[activePageIndex].fields[selectedFieldIndex]}
+                allFields={formData.pages.flatMap((page, pageIndex) => 
+                  // Add page index info to each field for better context
+                  page.fields.map(field => ({
+                    ...field,
+                    pageIndex,
+                    pageName: page.title
+                  }))
+                )}
+                currentFieldIndex={selectedFieldIndex}
+                conditional={formData.pages[activePageIndex].fields[selectedFieldIndex].conditional}
+                onUpdate={handleUpdateConditions}
+              />
+            )}
           </DialogContent>
-          <DialogActions sx={{ p: { xs: 2, sm: 1 } }}>
-            <Button onClick={toggleConditionsDialog}>Close</Button>
-          </DialogActions>
         </Dialog>
       )}
 

@@ -41,15 +41,19 @@ api.interceptors.response.use(
         localStorage.removeItem('user');
         // window.location.href = '/login';
       }
-      return Promise.reject(error.response);
+      // Preserve the original error with response data
+      error.responseData = error.response.data;
+      return Promise.reject(error);
     } else if (error.request) {
       // No response was received - possibly network error
       console.error('Network Error:', error.request);
-      return Promise.reject({ data: { message: 'Network error. Please check your connection.' } });
+      error.responseData = { message: 'Network error. Please check your connection.' };
+      return Promise.reject(error);
     } else {
       // Something happened in setting up the request
       console.error('Error:', error.message);
-      return Promise.reject({ data: { message: error.message } });
+      error.responseData = { message: error.message };
+      return Promise.reject(error);
     }
   }
 );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Tabs, 
@@ -57,8 +57,19 @@ const FormPageTabs = ({
 
   // Handle page tab change
   const handleTabChange = (event, newValue) => {
-    onPageChange(newValue);
+    // Ensure newValue is within valid range
+    if (newValue >= 0 && newValue < pages.length) {
+      onPageChange(newValue);
+    }
   };
+
+  // Force update when pages or activePageIndex changes
+  useEffect(() => {
+    // Ensure activePageIndex is valid
+    if (activePageIndex >= pages.length) {
+      onPageChange(pages.length - 1);
+    }
+  }, [pages.length, activePageIndex, onPageChange]);
 
   // Confirm page deletion
   const confirmDeletePage = (pageIndex) => {

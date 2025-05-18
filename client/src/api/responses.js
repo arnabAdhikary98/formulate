@@ -2,8 +2,14 @@ import api from './axios';
 
 // Submit a response to a form (public)
 export const submitResponse = async (responseData) => {
-  const response = await api.post('/responses', responseData);
-  return response.data;
+  try {
+    const response = await api.post('/responses', responseData);
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting form response:', error);
+    // Propagate the error with any response data
+    throw error;
+  }
 };
 
 // Get all responses for a form

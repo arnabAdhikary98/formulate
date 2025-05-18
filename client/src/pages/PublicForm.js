@@ -282,15 +282,17 @@ const PublicForm = () => {
       return false;
     }
     
-    if (!field.conditional.dependsOn) {
+    if (!field.conditional.dependsOn && field.conditional.dependsOn !== 0) {
       return false;
     }
     
+    // Find the dependent field by order property
     const dependentField = form.pages
       .flatMap(page => page.fields)
-      .find(f => f.order === field.conditional.dependsOn);
+      .find(f => f.order === parseInt(field.conditional.dependsOn));
     
     if (!dependentField) {
+      console.log("Dependent field not found for condition:", field.conditional);
       return false;
     }
     
@@ -298,9 +300,9 @@ const PublicForm = () => {
     
     switch (field.conditional.condition) {
       case 'equals':
-        return dependentValue !== field.conditional.value;
+        return String(dependentValue) !== String(field.conditional.value);
       case 'not_equals':
-        return dependentValue === field.conditional.value;
+        return String(dependentValue) === String(field.conditional.value);
       case 'contains':
         return !String(dependentValue).includes(field.conditional.value);
       case 'not_contains':
@@ -309,6 +311,10 @@ const PublicForm = () => {
         return Number(dependentValue) <= Number(field.conditional.value);
       case 'less_than':
         return Number(dependentValue) >= Number(field.conditional.value);
+      case 'is_empty':
+        return dependentValue !== undefined && dependentValue !== null && dependentValue !== '';
+      case 'is_not_empty':
+        return dependentValue === undefined || dependentValue === null || dependentValue === '';
       default:
         return false;
     }
@@ -357,22 +363,39 @@ const PublicForm = () => {
             return;
           }
           
-          // Add the answer if there is a value
-          if (formValues[field._id] !== undefined && formValues[field._id] !== null && formValues[field._id] !== '') {
+          // For required fields with no value, add an empty value to ensure they're included
+          if (field.required && (formValues[field._id] === undefined || formValues[field._id] === null || formValues[field._id] === '')) {
+            setError(`Please complete all required fields before submitting.`);
+            setSubmitting(false);
+            return;
+          }
+          
+          // Add all fields that have a value or are required
+          if (formValues[field._id] !== undefined && formValues[field._id] !== null) {
             answers.push({
               fieldId: field._id,
-              fieldLabel: field.label,
-              fieldType: field.type,
+              fieldLabel: field.label || 'Untitled Field',
+              fieldType: field.type || 'text',
               value: formValues[field._id]
             });
           }
         });
       });
       
+      // Check if we have any answers
+      if (answers.length === 0) {
+        setError('Please complete at least one field before submitting.');
+        setSubmitting(false);
+        return;
+      }
+      
       const responseData = {
         formId: form._id,
         answers,
-        respondentEmail: form.settings?.collectEmail ? email : undefined
+        respondentEmail: form.settings?.collectEmail ? email : undefined,
+        startedAt: new Date().toISOString(),
+        timeSpentMs: 0, // You could track this with a timer if needed
+        status: 'complete'
       };
       
       console.log('Submitting form response:', responseData);
@@ -399,7 +422,22 @@ const PublicForm = () => {
         }
       } catch (submitError) {
         console.error('Form submission failed:', submitError);
-        setError('Failed to submit form. The server might be unavailable or the form may no longer be accepting responses.');
+        // More specific error message based on the response
+        if (submitError.response) {
+          if (submitError.response.status === 400) {
+            setError(`Form submission error: ${submitError.responseData?.message || submitError.response.data?.message || 'Bad request'}`);
+          } else if (submitError.response.status === 403) {
+            setError('This form is not currently accepting responses.');
+          } else if (submitError.response.status === 404) {
+            setError('Form not found. It may have been deleted or unpublished.');
+          } else {
+            setError('Failed to submit form. The server might be unavailable or the form may no longer be accepting responses.');
+          }
+        } else if (submitError.responseData) {
+          setError(submitError.responseData.message || 'Error submitting form');
+        } else {
+          setError('Network error. Please check your connection and try again.');
+        }
         setSubmitting(false);
       }
     } catch (err) {
