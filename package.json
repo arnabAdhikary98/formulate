@@ -15,6 +15,7 @@
     "build": "cd client && npm run build",
     "build:server": "cd server && npm run build",
     "build:all": "npm run build && npm run build:server",
+    "vercel-build": "cd client && npm run build",
     "test": "cd client && npm run test",
     "test:coverage": "cd client && npm run test:coverage",
     "test:ci": "cd client && npm run test:ci",

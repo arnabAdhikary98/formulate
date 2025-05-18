@@ -30,6 +30,7 @@
     "start": "cross-env NODE_OPTIONS=--max-old-space-size=4096 BROWSER=none FAST_REFRESH=true GENERATE_SOURCEMAP=false ESLINT_NO_DEV_ERRORS=true craco start",
     "start:react": "react-scripts start",
     "build": "craco build",
+    "vercel-build": "craco build && cp -r build dist",
     "test": "react-scripts test",
     "test:coverage": "react-scripts test --coverage",
     "test:ci": "react-scripts test --ci --watchAll=false",
